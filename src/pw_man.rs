@@ -45,9 +45,7 @@ impl<'a> PwMan {
 
     pub fn add_pw(&mut self, website: &str, passwd: &str) {
        let hash = digest(website);
-       let key = &self.key[..];
-       let key: &Key<Aes256Gcm> = key.into();
-       let cipher = Aes256Gcm::new(key);
+       let cipher = Aes256Gcm::new(self.get_key());
        //let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
        let nonce = &hash.as_bytes()[..12];
        let ciphertext = cipher.encrypt(nonce.into(), passwd.as_bytes()).expect("encryption failed");
@@ -56,6 +54,20 @@ impl<'a> PwMan {
 
     pub fn get_pw_enc(&self, website: &str) -> Option<Vec<u8>> {
         self.pw_table.get(&digest(website)).cloned()
+    }
+
+    pub fn get_pw(&self, website: &str) -> Option<String> {
+        let hash = digest(website);
+        let enc_data = self.pw_table.get(&hash)?;
+        let nonce = &hash.as_bytes()[..12];
+        let cipher = Aes256Gcm::new(self.get_key());
+        let plaintext = cipher.decrypt(nonce.into(), enc_data.as_ref()).expect("decryption failed");
+        Some(plaintext.iter().map(|s| *s as char).collect::<String>())
+    }
+
+    fn get_key(&self) -> &Key<Aes256Gcm> {
+       let key = &self.key[..];
+       key.into()
     }
 }
 
