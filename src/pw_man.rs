@@ -1,6 +1,7 @@
 #![allow(unused)]
 use std::marker::PhantomData;
 use std::collections::HashMap;
+use std::hash::{BuildHasher, Hasher};
 use rand_core::OsRng;
 use argon2::{
     password_hash::{PasswordHasher, SaltString},
@@ -10,7 +11,14 @@ use aes_gcm::{
     aead::Aead,
     Aes256Gcm, Key, KeyInit, Nonce, AeadCore
 };
-use sha256::digest;
+use rs_sha512::{Sha512State, HasherContext};
+
+pub fn digest(subject: &str) -> String {
+    let mut hasher = Sha512State::default().build_hasher();
+    hasher.write(subject.as_bytes());
+    let bytes_res = HasherContext::finish(&mut hasher);
+    format!("{bytes_res:02x}")
+}
 
 pub struct PwMan {
    master_pass: String,
@@ -41,9 +49,13 @@ impl<'a> PwMan {
        let key: &Key<Aes256Gcm> = key.into();
        let cipher = Aes256Gcm::new(key);
        //let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-       let nonce = &hash.as_bytes()[..96];
+       let nonce = &hash.as_bytes()[..12];
        let ciphertext = cipher.encrypt(nonce.into(), passwd.as_bytes()).expect("encryption failed");
        self.pw_table.insert(hash.to_string(), ciphertext);
+    }
+
+    pub fn get_pw_enc(&self, website: &str) -> Option<Vec<u8>> {
+        self.pw_table.get(&digest(website)).cloned()
     }
 }
 

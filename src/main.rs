@@ -6,5 +6,5 @@ fn main() {
     let mut pw_man = PwMan::init("why tf");
     println!("adding pw");
     pw_man.add_pw("google.com", "this is pw");
-    println!("done");
+    println!("done, {:?}", pw_man.get_pw_enc("google.com"));
 }
