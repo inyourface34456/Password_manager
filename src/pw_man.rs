@@ -31,12 +31,14 @@ impl<'a> PwMan {
         let argon2 = Argon2::default();
         let master_pass = argon2
             .hash_password(passwd.as_bytes(), &salt)
+            // TODO: change to result
             .expect("failed to hash password")
             .to_string();
 
         let key: &mut [u8; 32] = &mut [0u8; 32];
         argon2
             .hash_password_into(passwd.as_bytes(), salt.as_str().as_bytes(), key)
+            // TODO: change to result
             .expect("failed to gen key mat");
 
         Self {
@@ -53,6 +55,7 @@ impl<'a> PwMan {
         let nonce = &hash.as_bytes()[..12];
         let ciphertext = cipher
             .encrypt(nonce.into(), passwd.as_bytes())
+            // TODO: change to result
             .expect("encryption failed");
         self.pw_table.insert(hash.to_string(), ciphertext);
     }
@@ -68,6 +71,7 @@ impl<'a> PwMan {
         let cipher = Aes256Gcm::new(self.get_key());
         let plaintext = cipher
             .decrypt(nonce.into(), enc_data.as_ref())
+            // TODO: change to result
             .expect("decryption failed");
         Some(plaintext.iter().map(|s| *s as char).collect::<String>())
     }

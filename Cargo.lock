@@ -211,6 +211,7 @@ dependencies = [
  "aes-gcm",
  "argon2",
  "rand_core",
+ "rs_n_bit_words",
  "rs_sha512",
 ]
 
