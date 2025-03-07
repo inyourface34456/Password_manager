@@ -7,9 +7,13 @@ use argon2::{
 };
 use rand_core::OsRng;
 use rs_sha512::{HasherContext, Sha512State};
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Read};
 use std::hash::{BuildHasher, Hasher};
 use std::marker::PhantomData;
+use std::io::Write;
+use std::fs::File;
+use serde::{Serialize, Deserialize};
+use postcard::{from_bytes, to_allocvec};
 
 pub fn digest(subject: &str) -> String {
     let mut hasher = Sha512State::default().build_hasher();
@@ -18,10 +22,12 @@ pub fn digest(subject: &str) -> String {
     format!("{bytes_res:02x}")
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub struct PwMan {
     master_pass: String,
     /// Maps hashes of websites to encrypted passwords
     pw_table: HashMap<String, Vec<u8>>,
+    //#[serde(skip_serializing)]
     key: Vec<u8>,
 }
 
@@ -77,7 +83,18 @@ impl<'a> PwMan {
     }
 
     pub fn write_to_file(&self) {
-        serialize(self.master_pass.clone(), self.pw_table.clone());
+        let mut f = File::create("savefile").expect("could not open file");
+        let bytes/*: alloc::vec::Vec<_>*/ = to_allocvec(&self).expect("failed to serilize"); 
+
+        f.write_all(&bytes);
+    }
+
+    pub fn read_from_file() -> Self {
+        let mut f = File::open("savefile").expect("could not open file");
+        let mut buf = Vec::with_capacity(f.metadata().unwrap().len().try_into().unwrap());
+        f.read(&mut buf);
+
+        from_bytes(&buf).unwrap()
     }
 
     fn get_key(&self) -> &Key<Aes256Gcm> {
