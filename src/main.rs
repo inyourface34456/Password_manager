@@ -12,6 +12,6 @@ fn main() {
     println!("done, {:?}", pw_man.get_pw("google.com"));
     pw_man.write_to_file();
 
-    let pw_man_from_file = PwMan::read_from_file();
+    let pw_man_from_file = PwMan::read_from_file("why tf");
     println!("read from file: {:?}", pw_man_from_file.get_pw("google.com"));
 }
