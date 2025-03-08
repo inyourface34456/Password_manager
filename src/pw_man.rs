@@ -1,5 +1,4 @@
 #![allow(unused)]
-use crate::serialize;
 use aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, Nonce, aead::Aead};
 use argon2::{
     password_hash::{PasswordHasher, SaltString}, Argon2, PasswordHash, PasswordVerifier,
