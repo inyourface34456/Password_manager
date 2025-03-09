@@ -1,18 +1,19 @@
 #![allow(unused)]
+use crate::error::Error;
 use aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, Nonce, aead::Aead};
 use argon2::{
-    password_hash::{PasswordHasher, SaltString}, Argon2, PasswordHash, PasswordVerifier,
+    Argon2, PasswordHash, PasswordVerifier,
+    password_hash::{PasswordHasher, SaltString},
 };
 use rand_core::{OsRng, SeedableRng};
 use rs_sha512::{HasherContext, Sha512State};
-use std::{collections::HashMap, io::Read};
-use std::hash::{BuildHasher, Hasher};
-use std::marker::PhantomData;
-use std::io::Write;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, to_string};
 use std::fs::File;
-use serde::{Serialize, Deserialize};
-use serde_json::{to_string, from_str};
-
+use std::hash::{BuildHasher, Hasher};
+use std::io::Write;
+use std::marker::PhantomData;
+use std::{collections::HashMap, io::Read};
 
 pub fn digest(subject: &str) -> String {
     let mut hasher = Sha512State::default().build_hasher();
@@ -31,64 +32,69 @@ pub struct PwMan {
 }
 
 impl<'a> PwMan {
-    pub fn init(passwd: &str) -> Self {
+    pub fn init(passwd: &str) -> Result<Self, Error> {
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         let master_pass = argon2
             .hash_password(passwd.as_bytes(), &salt)
-            // TODO: change to result
-            .expect("failed to hash password")
+            .map_err(|e| Error::HashFailure(e))?
             .to_string();
 
         let key: &mut [u8; 32] = &mut [0u8; 32];
         argon2
             .hash_password_into(passwd.as_bytes(), salt.as_str().as_bytes(), key)
-            // TODO: change to result
-            .expect("failed to gen key mat");
+            .map_err(|e| Error::KeyGenFialure(e))?;
 
-        Self {
+        Ok(Self {
             master_pass,
             pw_table: HashMap::new(),
             key: key.to_vec(),
-        }
+        })
     }
 
-    pub fn add_pw(&mut self, website: &str, passwd: &str) {
+    pub fn add_pw(&mut self, website: &str, passwd: &str) -> Result<(), Error> {
         let hash = digest(website);
         let cipher = Aes256Gcm::new(self.get_key());
         //let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
         let nonce = &hash.as_bytes()[..12];
         let ciphertext = cipher
             .encrypt(nonce.into(), passwd.as_bytes())
-            // TODO: change to result
-            .expect("encryption failed");
+            .map_err(|_| Error::EncryptionFailure)?;
+
         self.pw_table.insert(hash.to_string(), ciphertext);
+        Ok(())
     }
 
     pub fn get_pw_enc(&self, website: &str) -> Option<Vec<u8>> {
         self.pw_table.get(&digest(website)).cloned()
     }
 
-    pub fn get_pw(&self, website: &str) -> Option<String> {
+    pub fn get_pw(&self, website: &str) -> Result<Option<String>, Error> {
         let hash = digest(website);
-        let enc_data = self.pw_table.get(&hash)?;
+        let enc_data = match self.pw_table.get(&hash) {
+            Some(v) => v,
+            None => return Ok(None),
+        };
         let nonce = &hash.as_bytes()[..12];
         let cipher = Aes256Gcm::new(self.get_key());
         let plaintext = cipher
             .decrypt(nonce.into(), enc_data.as_ref())
-            // TODO: change to result
-            .expect("decryption failed");
-        Some(plaintext.iter().map(|s| *s as char).collect::<String>())
+            .map_err(|_| Error::DecryptionFailure)?;
+
+        Ok(Some(
+            plaintext.iter().map(|s| *s as char).collect::<String>(),
+        ))
     }
 
-    pub fn write_to_file(self) {
+    pub fn write_to_file(self) -> Result<(), Error> {
         let mut f = File::create("savefile").expect("could not open file");
-        let bytes = to_string(&self).expect("cannot serialze");
+        let bytes = to_string(&self).map_err(|e| Error::SerializationFailure(e))?;
 
         f.write_all(bytes.as_bytes());
+        Ok(())
     }
 
-    pub fn read_from_file(master_pw: &str) -> Self {
+    pub fn read_from_file(master_pw: &str) -> Result<Self, Error> {
         let mut f = File::open("savefile").expect("could not open file");
         let len = f.metadata().unwrap().len();
         let mut buf = Vec::with_capacity(len.try_into().unwrap());
@@ -96,21 +102,24 @@ impl<'a> PwMan {
 
         let data = &buf.iter().map(|u| *u as char).collect::<String>();
 
-        let mut data: serde_json::Value = from_str(data).expect("cannot deserlize");
-        let parsed_hash = PasswordHash::new(data["master_pass"].as_str().unwrap()).expect("bad hash");
-        Argon2::default().verify_password(master_pw.as_bytes(), &parsed_hash).expect("bad password");
+        let mut data: serde_json::Value =
+            from_str(data).map_err(|e| Error::DeserializationFailure(e))?;
+        let parsed_hash = PasswordHash::new(data["master_pass"].as_str().unwrap())
+            .map_err(|e| Error::HashFailure(e))?;
+        Argon2::default()
+            .verify_password(master_pw.as_bytes(), &parsed_hash)
+            .expect("bad password");
 
         let salt = parsed_hash.salt.unwrap();
-        
-        let key: &mut [u8; 32] = &mut [0u8; 32]; 
+
+        let key: &mut [u8; 32] = &mut [0u8; 32];
         Argon2::default()
             .hash_password_into(master_pw.as_bytes(), salt.as_str().as_bytes(), key)
-            // TODO: change to result
-            .expect("failed to gen key mat");
+            .map_err(|e| Error::KeyGenFialure(e))?;
 
         data["key"] = (*key).into();
 
-        from_str(&data.to_string()).expect("cannot deserialze")
+        from_str(&data.to_string()).map_err(|e| Error::DeserializationFailure(e))
     }
 
     fn get_key(&self) -> &Key<Aes256Gcm> {

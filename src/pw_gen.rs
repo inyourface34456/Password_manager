@@ -24,14 +24,14 @@ impl Default for PwGen {
     }
 }
 
-impl PwGen  {
+impl PwGen {
     pub fn new(
         alpha_upper: bool,
         alpha_lower: bool,
         numaric: bool,
         symbols: bool,
         misc_nonprintable: bool,
-        utf8_printable: bool
+        utf8_printable: bool,
     ) -> Self {
         Self {
             alpha_upper,
@@ -69,15 +69,15 @@ impl PwGen  {
     }
 
     pub fn gen_rand_pw(&self, len: usize) -> String {
-       let charset = self.to_charset();
-       let mut res: Vec<char> = Vec::new();
+        let charset = self.to_charset();
+        let mut res: Vec<char> = Vec::new();
 
-       for _ in 0..len {
-           let idx: usize = OsRng.next_u64().try_into().unwrap();
-           let chr = charset[idx%charset.len()];
-           res.push(chr);
-       }
+        for _ in 0..len {
+            let idx: usize = OsRng.next_u64().try_into().unwrap();
+            let chr = charset[idx % charset.len()];
+            res.push(chr);
+        }
 
-       res.iter().collect()
+        res.iter().collect()
     }
 }
