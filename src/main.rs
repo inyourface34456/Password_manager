@@ -5,8 +5,6 @@ mod pw_man;
 
 use pw_gen::PwGen;
 use pw_man::PwMan;
-use std::fs::File;
-use std::io::Write;
 
 fn main() {
     let mut pw_man = PwMan::init("why tf").unwrap();
@@ -14,7 +12,7 @@ fn main() {
     pw_man.add_pw("google.com", "this is pw").unwrap();
 
     println!("done, {:?}", pw_man.get_pw("google.com"));
-    pw_man.write_to_file();
+    pw_man.write_to_file().unwrap();
 
     let pw_man_from_file = PwMan::read_from_file("why tf").unwrap();
     println!(
@@ -22,12 +20,15 @@ fn main() {
         pw_man_from_file.get_pw("google.com").unwrap()
     );
 
-    let pw_gen = PwGen::new(true, true, true, true, true, true);
-    println!("pw: {}", pw_gen.gen_rand_pw(30));
-
     let pw_gen = PwGen::default();
     println!("pw: {}", pw_gen.gen_rand_pw(30));
 
     let pw_gen = PwGen::new(true, true, true, true, true, false);
     println!("pw: {}", pw_gen.gen_rand_pw(30));
+
+    let pw_gen = PwGen::new(true, true, true, true, true, true);
+    println!("pw: {}", pw_gen.gen_rand_pw(30));
+
+    let pw_gen = PwGen::default();
+    println!("pw: {}", pw_gen.gen_rem_pw(5));
 }

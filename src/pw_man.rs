@@ -24,8 +24,10 @@ pub fn digest(subject: &str) -> String {
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub struct PwMan {
+    #[serde(alias = "masterPass")]
     master_pass: String,
     /// Maps hashes of websites to encrypted passwords
+    #[serde(alias = "pwTable")]
     pw_table: HashMap<String, Vec<u8>>,
     #[serde(skip_serializing)]
     key: Vec<u8>,
@@ -87,7 +89,7 @@ impl<'a> PwMan {
     }
 
     pub fn write_to_file(self) -> Result<(), Error> {
-        let mut f = File::create("savefile").expect("could not open file");
+        let mut f = File::create("savefile").map_err(|e| Error::FileOprationError(e))?;
         let bytes = to_string(&self).map_err(|e| Error::SerializationFailure(e))?;
 
         f.write_all(bytes.as_bytes());
@@ -95,7 +97,7 @@ impl<'a> PwMan {
     }
 
     pub fn read_from_file(master_pw: &str) -> Result<Self, Error> {
-        let mut f = File::open("savefile").expect("could not open file");
+        let mut f = File::open("savefile").map_err(|e| Error::FileOprationError(e))?;
         let len = f.metadata().unwrap().len();
         let mut buf = Vec::with_capacity(len.try_into().unwrap());
         f.read_to_end(&mut buf);
@@ -104,11 +106,13 @@ impl<'a> PwMan {
 
         let mut data: serde_json::Value =
             from_str(data).map_err(|e| Error::DeserializationFailure(e))?;
+
         let parsed_hash = PasswordHash::new(data["master_pass"].as_str().unwrap())
             .map_err(|e| Error::HashFailure(e))?;
+
         Argon2::default()
             .verify_password(master_pw.as_bytes(), &parsed_hash)
-            .expect("bad password");
+            .map_err(|e| Error::BadPassword(e))?;
 
         let salt = parsed_hash.salt.unwrap();
 

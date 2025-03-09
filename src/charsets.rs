@@ -1,6 +1,7 @@
 use crate::pw_gen::PwGen;
 
 impl PwGen {
+    pub const WORD_LIST: &[&str; 2008] = include!("..\\top_words.txt");
     pub const ALPHA_UPPER: &[char; 26] = &[
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'N', 'M', 'O', 'P', 'Q', 'R',
         'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',

@@ -9,6 +9,8 @@ pub enum Error {
     DecryptionFailure,
     SerializationFailure(serde_json::error::Error),
     DeserializationFailure(serde_json::error::Error),
+    FileOprationError(std::io::Error),
+    BadPassword(argon2::password_hash::errors::Error),
 }
 
 impl Display for Error {
@@ -32,6 +34,10 @@ impl Display for Error {
                 error.column(),
                 error.classify()
             ),
+            Self::FileOprationError(error) => {
+                write!(f, "File Operation Error: {}", error.to_string())
+            }
+            Self::BadPassword(error) => write!(f, "Bassword Verifacation Error: {}", error),
         }
     }
 }

@@ -80,4 +80,17 @@ impl PwGen {
 
         res.iter().collect()
     }
+
+    pub fn gen_rem_pw(&self, len: usize) -> String {
+        let charset = Self::WORD_LIST;
+        let mut res: Vec<&str> = Vec::new();
+
+        for _ in 0..len {
+            let idx: usize = OsRng.next_u64().try_into().unwrap();
+            let chr = charset[idx % charset.len()];
+            res.push(chr);
+        }
+
+        res.join(" ")
+    }
 }
