@@ -1,0 +1,3 @@
+Add a remove API
+Add a file + message vult api
+	message struct w/ title, message, and a list of file structs. file structs would contain name and data

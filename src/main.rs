@@ -2,6 +2,7 @@ mod charsets;
 mod error;
 mod pw_gen;
 mod pw_man;
+mod tests;
 
 use pw_gen::PwGen;
 use pw_man::PwMan;

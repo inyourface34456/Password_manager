@@ -126,6 +126,23 @@ impl<'a> PwMan {
         from_str(&data.to_string()).map_err(|e| Error::DeserializationFailure(e))
     }
 
+    pub fn rm_pw(&mut self, site: &str) -> Result<Option<String>, Error> {
+        let hash = digest(site);
+        let enc_data = match self.pw_table.remove(&hash) {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+        let nonce = &hash.as_bytes()[..12];
+        let cipher = Aes256Gcm::new(self.get_key());
+        let plaintext = cipher
+            .decrypt(nonce.into(), enc_data.as_ref())
+            .map_err(|_| Error::DecryptionFailure)?;
+
+        Ok(Some(
+            plaintext.iter().map(|s| *s as char).collect::<String>(),
+        ))
+    }
+
     fn get_key(&self) -> &Key<Aes256Gcm> {
         let key = &self.key[..];
         key.into()

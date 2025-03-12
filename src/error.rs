@@ -43,3 +43,32 @@ impl Display for Error {
 }
 
 impl ErrTrait for Error {}
+
+impl Eq for Error {}
+
+impl PartialEq for Error {
+    fn eq(&self, other: &Self) -> bool {
+       match (self, other) {
+           (Self::BadPassword(_), Self::BadPassword(_)) => true,
+           (Self::BadPassword(_), _) => false,
+           (Self::FileOprationError(_), Self::FileOprationError(_)) => true,
+           (Self::FileOprationError(_), _) => false,
+           (Self::DeserializationFailure(_), Self::DeserializationFailure(_)) => true,
+           (Self::DeserializationFailure(_), _) => false,
+           (Self::HashFailure(_), Self::HashFailure(_)) => true,
+           (Self::HashFailure(_), _) => false,
+           (Self::EncryptionFailure, Self::EncryptionFailure) => true,
+           (Self::EncryptionFailure, _) => false,
+           (Self::DecryptionFailure, Self::DecryptionFailure) => true,
+           (Self::DecryptionFailure, _) => false,
+           (Self::KeyGenFialure(_), Self::KeyGenFialure(_)) => true,
+           (Self::KeyGenFialure(_), _) => false,
+           (Self::SerializationFailure(_), Self::SerializationFailure(_)) => true,
+           (Self::SerializationFailure(_), _) => false,
+       }
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+}
