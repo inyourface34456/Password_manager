@@ -3,9 +3,11 @@ mod error;
 mod pw_gen;
 mod pw_man;
 mod tests;
+mod message;
 
 use pw_gen::PwGen;
 use pw_man::PwMan;
+use message::Message;
 
 fn main() {
     let mut pw_man = PwMan::init("why tf").unwrap();

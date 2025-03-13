@@ -9,7 +9,10 @@ pub enum Error {
     DecryptionFailure,
     SerializationFailure(serde_json::error::Error),
     DeserializationFailure(serde_json::error::Error),
-    FileOprationError(std::io::Error),
+    FileRead(std::io::Error),
+    FileWrite(std::io::Error),
+    FileOpen(std::io::Error),
+    FileCreate(std::io::Error),
     BadPassword(argon2::password_hash::errors::Error),
 }
 
@@ -34,8 +37,17 @@ impl Display for Error {
                 error.column(),
                 error.classify()
             ),
-            Self::FileOprationError(error) => {
-                write!(f, "File Operation Error: {}", error.to_string())
+            Self::FileRead(error) => {
+                write!(f, "File Read Error: {}", error.to_string())
+            }
+            Self::FileWrite(error) => {
+                write!(f, "File Write Error: {}", error.to_string())
+            }
+            Self::FileOpen(error) => {
+                write!(f, "File Open Error: {}", error.to_string())
+            }
+            Self::FileCreate(error) => {
+                write!(f, "File Create Error: {}", error.to_string())
             }
             Self::BadPassword(error) => write!(f, "Bassword Verifacation Error: {}", error),
         }
@@ -51,8 +63,14 @@ impl PartialEq for Error {
        match (self, other) {
            (Self::BadPassword(_), Self::BadPassword(_)) => true,
            (Self::BadPassword(_), _) => false,
-           (Self::FileOprationError(_), Self::FileOprationError(_)) => true,
-           (Self::FileOprationError(_), _) => false,
+           (Self::FileOpen(_), Self::FileOpen(_)) => true,
+           (Self::FileOpen(_), _) => false,
+           (Self::FileWrite(_), Self::FileWrite(_)) => true,
+           (Self::FileWrite(_), _) => false,
+           (Self::FileRead(_), Self::FileRead(_)) => true,
+           (Self::FileRead(_), _) => false,
+           (Self::FileCreate(_), Self::FileCreate(_)) => true,
+           (Self::FileCreate(_), _) => false,
            (Self::DeserializationFailure(_), Self::DeserializationFailure(_)) => true,
            (Self::DeserializationFailure(_), _) => false,
            (Self::HashFailure(_), Self::HashFailure(_)) => true,

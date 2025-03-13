@@ -14,6 +14,7 @@ use std::hash::{BuildHasher, Hasher};
 use std::io::Write;
 use std::marker::PhantomData;
 use std::{collections::HashMap, io::Read};
+use crate::message::Message;
 
 pub fn digest(subject: &str) -> String {
     let mut hasher = Sha512State::default().build_hasher();
@@ -29,6 +30,8 @@ pub struct PwMan {
     /// Maps hashes of websites to encrypted passwords
     #[serde(alias = "pwTable")]
     pw_table: HashMap<String, Vec<u8>>,
+    #[serde(alias = "msgTable")]
+    msg_table: HashMap<String, Message>,
     #[serde(skip_serializing)]
     key: Vec<u8>,
 }
@@ -50,6 +53,7 @@ impl<'a> PwMan {
         Ok(Self {
             master_pass,
             pw_table: HashMap::new(),
+            msg_table: HashMap::new(),
             key: key.to_vec(),
         })
     }
@@ -89,7 +93,7 @@ impl<'a> PwMan {
     }
 
     pub fn write_to_file(self) -> Result<(), Error> {
-        let mut f = File::create("savefile").map_err(|e| Error::FileOprationError(e))?;
+        let mut f = File::create("savefile").map_err(|e| Error::FileCreate(e))?;
         let bytes = to_string(&self).map_err(|e| Error::SerializationFailure(e))?;
 
         f.write_all(bytes.as_bytes());
@@ -97,7 +101,7 @@ impl<'a> PwMan {
     }
 
     pub fn read_from_file(master_pw: &str) -> Result<Self, Error> {
-        let mut f = File::open("savefile").map_err(|e| Error::FileOprationError(e))?;
+        let mut f = File::open("savefile").map_err(|e| Error::FileOpen(e))?;
         let len = f.metadata().unwrap().len();
         let mut buf = Vec::with_capacity(len.try_into().unwrap());
         f.read_to_end(&mut buf);
@@ -141,6 +145,19 @@ impl<'a> PwMan {
         Ok(Some(
             plaintext.iter().map(|s| *s as char).collect::<String>(),
         ))
+    }
+
+    pub fn encrypt(&self, data: &[u8], nonce: &[u8]) -> Result<Vec<u8>, Error> {
+        let key = self.get_key();
+        let cipher = Aes256Gcm::new(key);
+        cipher.encrypt(nonce.into(), data).map_err(|_| Error::EncryptionFailure)
+    }
+
+    pub fn decrypt(&self, data: &[u8], nonce: &[u8]) -> Result<Vec<u8>, Error> {
+        let key = self.get_key();
+        let cipher = Aes256Gcm::new(key);
+        cipher.decrypt(nonce.into(), data).map_err(|_| Error::DecryptionFailure)
+        
     }
 
     fn get_key(&self) -> &Key<Aes256Gcm> {
