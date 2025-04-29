@@ -14,7 +14,6 @@ use std::hash::{BuildHasher, Hasher};
 use std::io::Write;
 use std::marker::PhantomData;
 use std::{collections::HashMap, io::Read};
-use crate::message::Message;
 
 pub fn digest(subject: &str) -> String {
     let mut hasher = Sha512State::default().build_hasher();
@@ -23,7 +22,7 @@ pub fn digest(subject: &str) -> String {
     format!("{bytes_res:02x}")
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Default)]
 pub struct PwMan {
     #[serde(alias = "masterPass")]
     master_pass: String,
@@ -31,7 +30,7 @@ pub struct PwMan {
     #[serde(alias = "pwTable")]
     pw_table: HashMap<String, Vec<u8>>,
     #[serde(alias = "msgTable")]
-    msg_table: HashMap<String, Message>,
+    msg_table: HashMap<String, (Vec<u8>, Vec<u8>)>,
     #[serde(skip_serializing)]
     key: Vec<u8>,
 }
@@ -147,17 +146,47 @@ impl<'a> PwMan {
         ))
     }
 
+    pub fn add_msg(&mut self, name: &str, contents: &str) -> Result<(), Error> {
+        let nonce = SaltString::generate(&mut OsRng).to_string();
+        let data = self
+            .encrypt(contents.as_bytes(), &nonce.as_bytes()[..12])
+            .map_err(|_| Error::EncryptionFailure)?;
+
+        self.msg_table
+            .insert(name.to_string(), (data, nonce.as_bytes()[..12].to_vec()));
+
+        Ok(())
+    }
+
+    pub fn retrive_message(&self, name: &str) -> Result<Option<String>, Error> {
+        let data = match self.msg_table.get(name) {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
+        match self.decrypt(data.0.as_slice(), data.1.as_slice()) {
+            Err(_) => Err(Error::DecryptionFailure),
+            Ok(data) => {
+                let data = data.iter().map(|d| *d as char).collect::<String>();
+                Ok(Some(data))
+            }
+        }
+    }
+
     pub fn encrypt(&self, data: &[u8], nonce: &[u8]) -> Result<Vec<u8>, Error> {
         let key = self.get_key();
         let cipher = Aes256Gcm::new(key);
-        cipher.encrypt(nonce.into(), data).map_err(|_| Error::EncryptionFailure)
+        cipher
+            .encrypt(nonce.into(), data)
+            .map_err(|_| Error::EncryptionFailure)
     }
 
     pub fn decrypt(&self, data: &[u8], nonce: &[u8]) -> Result<Vec<u8>, Error> {
         let key = self.get_key();
         let cipher = Aes256Gcm::new(key);
-        cipher.decrypt(nonce.into(), data).map_err(|_| Error::DecryptionFailure)
-        
+        cipher
+            .decrypt(nonce.into(), data)
+            .map_err(|_| Error::DecryptionFailure)
     }
 
     fn get_key(&self) -> &Key<Aes256Gcm> {

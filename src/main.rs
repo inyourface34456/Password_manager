@@ -3,16 +3,19 @@ mod error;
 mod pw_gen;
 mod pw_man;
 mod tests;
-mod message;
 
 use pw_gen::PwGen;
 use pw_man::PwMan;
-use message::Message;
 
 fn main() {
     let mut pw_man = PwMan::init("why tf").unwrap();
     println!("adding pw");
     pw_man.add_pw("google.com", "this is pw").unwrap();
+
+    pw_man.add_msg("test", "test").unwrap();
+    println!("added message");
+
+    println!("message test reads: {:?}", pw_man.retrive_message("test"));
 
     println!("done, {:?}", pw_man.get_pw("google.com"));
     pw_man.write_to_file().unwrap();

@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod tests {
     use crate::*;
-    
+
     #[test]
     fn creation() {
         let _pw_man = PwMan::init("pw_one").unwrap();
@@ -12,7 +12,10 @@ mod tests {
     fn store_recall() {
         let mut pw_man = PwMan::init("pw_one").unwrap();
         pw_man.add_pw("example.com", "example_pw").unwrap();
-        assert_eq!(Ok(Some("example_pw".to_owned())), pw_man.get_pw("example.com"));
+        assert_eq!(
+            Ok(Some("example_pw".to_owned())),
+            pw_man.get_pw("example.com")
+        );
     }
 
     #[test]
@@ -25,7 +28,10 @@ mod tests {
     #[test]
     fn load_from_disk() {
         let pw_man = PwMan::read_from_file("pw_one").unwrap();
-        assert_eq!(Ok(Some("example_pw".to_owned())), pw_man.get_pw("example.com"));
+        assert_eq!(
+            Ok(Some("example_pw".to_owned())),
+            pw_man.get_pw("example.com")
+        );
     }
 
     #[test]
@@ -37,7 +43,10 @@ mod tests {
     #[test]
     fn rm_pw() {
         let mut pw_man = PwMan::read_from_file("pw_one").unwrap();
-        assert_eq!(Ok(Some("example_pw".to_owned())), pw_man.rm_pw("example.com"));
+        assert_eq!(
+            Ok(Some("example_pw".to_owned())),
+            pw_man.rm_pw("example.com")
+        );
         assert_eq!(Ok(None), pw_man.get_pw("exmaple.com"));
     }
 }
